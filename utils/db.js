@@ -1,7 +1,6 @@
 // import MongoClient from the mongodb package
 const { MongoClient } = require('mongodb');
 
-
 class DBClient {
   constructor() {
     const host = process.env.DB_HOST || 'localhost';
@@ -15,12 +14,13 @@ class DBClient {
     // connect to the MongoDB server
     this.connect();
   }
+
   async connect() {
     try {
       await this.client.connect();
       this.db = this.client.db();
       this.isConnected = true;
-    }  catch (error) {
+    } catch (error) {
       console.error(`Error connecting to MongoDb: ${error}`);
       this.isConnected = false;
     }
@@ -37,7 +37,7 @@ class DBClient {
       const usersCollection = this.db.collection('users');
       const count = await usersCollection.countDocuments();
       return count;
-    } catch {
+    } catch (error) {
       return 0;
     }
   }
@@ -48,7 +48,7 @@ class DBClient {
       const filesCollection = this.db.collection('files');
       const count = await filesCollection.countDocuments();
       return count;
-    } catch {
+    } catch (error) {
       return 0;
     }
   }
