@@ -1,4 +1,4 @@
-// index for all the routes 
+// index for all the routes
 import { Router } from 'express';
 import AppController from '../controllers/AppController';
 import UsersController from '../controllers/UsersController';
