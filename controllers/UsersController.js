@@ -1,8 +1,7 @@
 // users endpoint
-import { ObjectId } from 'mongodb';
-import dbClient from '../utils/db';
+// import { ObjectId } from 'mongodb';
 import sha1 from 'sha1';
-
+import dbClient from '../utils/db';
 
 class UsersController {
   static async postNew(req, res) {
@@ -14,7 +13,7 @@ class UsersController {
       return res.status(400).json({ error: 'Missing password' });
     }
     try {
-      const db = dbClient.db;
+      const { db } = dbClient.db;
       const usersCollection = db.collection('users');
       const userExists = await usersCollection.findOne({ email });
       if (userExists) {
