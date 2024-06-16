@@ -21,13 +21,16 @@ class RedisClient {
 
   isAlive() {
     return this.isClientConnected;
-  };
-  async get(key) {
-    return await this.getAsync(key);
   }
+
+  async get(key) {
+    return this.getAsync(key);
+  }
+
   async set(key, value, duration) {
     await this.setAsync(key, value, 'EX', duration);
   }
+
   async del(key) {
     await this.delAsync(key);
   }
