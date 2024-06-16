@@ -13,7 +13,7 @@ class UsersController {
       return res.status(400).json({ error: 'Missing password' });
     }
     try {
-      const db = dbClient.db;
+      const { db }= dbClient;
       const usersCollection = db.collection('users');
       const userExists = await usersCollection.findOne({ email });
       if (userExists) {
