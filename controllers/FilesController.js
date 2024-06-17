@@ -55,7 +55,7 @@ class FilesController {
       const result = await filesCollection.insertOne(newFile);
       const insertedId = result.insertedId.toString();
       return res.status(201).json({
-        id: insertedId,
+        id: insertedId.toString(),
         userId: userId.toString(),
         name,
         type,
