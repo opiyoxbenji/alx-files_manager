@@ -72,6 +72,54 @@ class FilesController {
       return res.status(500).json({ error: 'Error uploading file' });
     }
   }
+
+  // Add GET /files/:id endpoint
+  static async getFile(req, res) {
+    const { id } = req.params;
+    const token = req.headers['x-token'];
+    const key = `auth_${token}`;
+    const userId = await redisClient.get(key);
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    try {
+      const { db } = dbClient;
+      const filesCollection = db.collection('files');
+      const file = await filesCollection.findOne({ _id: ObjectId(id), userId: ObjectId(userId) });
+      if (!file) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+      return res.status(200).json(file);
+    } catch (error) {
+      console.error('Error retrieving file:', error);
+      return res.status(500).json({ error: 'Error retrieving file' });
+    }
+  }
+
+  // Add GET /files endpoint
+  static async getFiles(req, res) {
+    const { parentId = 0, page = 0 } = req.query;
+    const token = req.headers['x-token'];
+    const key = `auth_${token}`;
+    const userId = await redisClient.get(key);
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    try {
+      const { db } = dbClient;
+      const filesCollection = db.collection('files');
+      const query = { userId: ObjectId(userId), parentId: parentId === 0 ? 0 : ObjectId(parentId) };
+      const files = await filesCollection.aggregate([
+        { $match: query },
+        { $skip: page * 20 },
+        { $limit: 20 },
+      ]).toArray();
+      return res.status(200).json(files);
+    } catch (error) {
+      console.error('Error retrieving files:', error);
+      return res.status(500).json({ error: 'Error retrieving files' });
+    }
+  }
 }
 
 module.exports = FilesController;
