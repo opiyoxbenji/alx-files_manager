@@ -9,7 +9,9 @@ const FOLDER_PATH = process.env.FOLDER_PATH || '/tmp/files_manager';
 
 class FilesController {
   static async postUpload(req, res) {
-    const { name, type, parentId = 0, isPublic = false, data } = req.body;
+    const {
+      name, type, parentId = 0, isPublic = false, data,
+    } = req.body;
     const token = req.headers['x-token'];
     if (!name) {
       return res.status(400).json({ error: 'Missing name' });
@@ -26,17 +28,17 @@ class FilesController {
       if (!userId) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
-      const db = dbClient.db;
+      const { db } = dbClient;
       const filesCollection = db.collection('files');
       let parentFile = null;
       if (parentId !== 0) {
         parentFile = await filesCollection.findOne({ _id: ObjectId(parentId) });
         if (!parentFile) {
           return res.status(400).json({ error: 'Parent not found' });
-	}
+        }
         if (parentFile.type !== 'folder') {
           return res.status(400).json({ error: 'Parent is not a folder' });
-	}
+        }
       }
       const newFile = {
         userId: ObjectId(userId),
@@ -44,7 +46,7 @@ class FilesController {
         type,
         isPublic,
         parentId: parentId === 0 ? 0 : ObjectId(parentId),
-      }
+      };
       if (type === 'file' || type === 'image') {
         const fileData = Buffer.from(data, 'base64');
         const fileId = new ObjectId();
@@ -60,7 +62,7 @@ class FilesController {
         name,
         type,
         isPublic,
-        parentId: parentId === 0 ? 0 :parentId.toString(),
+        parentId: parentId === 0 ? 0 : parentId.toString(),
       });
     } catch (error) {
       console.error('Error uploading file:', error);
