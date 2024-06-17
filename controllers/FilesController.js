@@ -12,17 +12,17 @@ class FilesController {
     const {
       name, type, parentId = 0, isPublic = false, data,
     } = req.body;
-    const token = req.headers['x-token'];
-    if (!name) {
-      return res.status(400).json({ error: 'Missing name' });
-    }
-    if (!type || !['folder', 'file', 'image'].includes(type)) {
-      return res.status(400).json({ error: 'Missing type' });
-    }
-    if (type !== 'folder' && !data) {
-      return res.status(400).json({ error: 'Missing data' });
-    }
     try {
+      if (!name) {
+        return res.status(400).json({ error: 'Missing name' });
+      }
+      if (!type || !['folder', 'file', 'image'].includes(type)) {
+        return res.status(400).json({ error: 'Missing type' });
+      }
+      if (type !== 'folder' && !data) {
+        return res.status(400).json({ error: 'Missing data' });
+      }
+      const token = req.headers['x-token'];
       const key = `auth_${token}`;
       const userId = await redisClient.get(key);
       if (!userId) {
@@ -51,6 +51,9 @@ class FilesController {
         const fileData = Buffer.from(data, 'base64');
         const fileId = new ObjectId();
         const localPath = path.join(FOLDER_PATH, fileId.toString());
+        if (!fs.existsSync(FOLDER_PATH)) {
+          fs.mkdirSync(FOLDER_PATH, { recursive: true });
+        }
         fs.writeFileSync(localPath, fileData);
         newFile.localPath = localPath;
       }
