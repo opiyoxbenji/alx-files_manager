@@ -72,52 +72,61 @@ class FilesController {
       return res.status(500).json({ error: 'Error uploading file' });
     }
   }
-
-  // Add GET /files/:id endpoint
-  static async getFile(req, res) {
-    const { id } = req.params;
-    const token = req.headers['x-token'];
-    const key = `auth_${token}`;
-    const userId = await redisClient.get(key);
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+  static async getShow(req, res) {
     try {
+      const token = req.headers['x-token'];
+      const key = `auth_${token}`;
+      const userId = await redisClient.get(key);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const fileId = req.params.id;
       const { db } = dbClient;
       const filesCollection = db.collection('files');
-      const file = await filesCollection.findOne({ _id: ObjectId(id), userId: ObjectId(userId) });
+      const file = await filesCollection.findOne({ _id: ObjectId(fileId), userId: ObjectId(userId) });
       if (!file) {
         return res.status(404).json({ error: 'Not found' });
       }
-      return res.status(200).json(file);
+      return res.json(file);
     } catch (error) {
-      console.error('Error retrieving file:', error);
-      return res.status(500).json({ error: 'Error retrieving file' });
+      console.error('Error fetching file:', error);
+      return res.status(500).json({ error: 'Error fetching file' });
     }
   }
 
-  // Add GET /files endpoint
-  static async getFiles(req, res) {
-    const { parentId = 0, page = 0 } = req.query;
-    const token = req.headers['x-token'];
-    const key = `auth_${token}`;
-    const userId = await redisClient.get(key);
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+  static async getIndex(req, res) {
     try {
+      const token = req.headers['x-token'];
+      const key = `auth_${token}`;
+      const userId = await redisClient.get(key);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const parentId = req.query.parentId || '0';
+      const page = parseInt(req.query.page, 10) || 0;
+      const pageSize = 20;
       const { db } = dbClient;
       const filesCollection = db.collection('files');
-      const query = { userId: ObjectId(userId), parentId: parentId === 0 ? 0 : ObjectId(parentId) };
-      const files = await filesCollection.aggregate([
-        { $match: query },
-        { $skip: page * 20 },
-        { $limit: 20 },
-      ]).toArray();
-      return res.status(200).json(files);
+      const query = { userId: ObjectId(userId) };
+      if (parentId !== '0') {
+        query.parentId = ObjectId(parentId);
+      } else {
+        query.parentId = '0';
+      }
+      const totalFiles = await filesCollection.find(query).count();
+      const files = await filesCollection.find(query)
+        .skip(page * pageSize)
+        .limit(pageSize)
+        .toArray();
+      return res.json({
+        totalFiles,
+        page,
+        pageSize,
+        files,
+      });
     } catch (error) {
-      console.error('Error retrieving files:', error);
-      return res.status(500).json({ error: 'Error retrieving files' });
+      console.error ('Error fetching files:', error);
+      return res.status(500).json({ error: 'Error fetching files' });
     }
   }
 }
