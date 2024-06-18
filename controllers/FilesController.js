@@ -143,6 +143,88 @@ class FilesController {
       return res.status(500).json({ error: 'Error fetching files' });
     }
   }
+
+  static async putPublish(req, res) {
+    try {
+      const token = req.headers['x-token'];
+      const key = `auth_${token}`;
+      const userId = await redisClient.get(key);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const fileId = req.params.id;
+      if (!fileId) {
+        return res.status(400).json({ error: 'Missing file id' });
+      }
+      const { db } = dbClient;
+      const filesCollection = db.collection('files');
+      const file = await filesCollection.findOne({
+        _id: ObjectId(fileId),
+        userId: ObjectId(userId),
+      });
+      if (!file) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+      await filesCollection.updateOne(
+        { _id: ObjectId(fileId) },
+        { $set: { isPublic: true } },
+      );
+      const updatedFile = await filesCollection.findOne({ _id: ObjectId(fileId) });
+      const mappedFile = {
+        id: updatedFile._id.toString(),
+        userId: userId.toString(),
+        name: updatedFile.name,
+        type: updatedFile.type,
+        isPublic: updatedFile.isPublic,
+        parentId: updatedFile.parentId ? updatedFile.parentId.toString() : '0',
+      };
+      return res.status(200).json(mappedFile);
+    } catch (error) {
+      console.error('Error publishing file:', error);
+      return res.status(500).json({ error: 'Error publishing file' });
+    }
+  }
+
+  static async putUnPublish(req, res) {
+    try {
+      const token = req.headers['x-token'];
+      const key = `auth_${token}`;
+      const userId = await redisClient.get(key);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const fileId = req.params.id;
+      if (!fileId) {
+        return res.status(400).json({ error: 'Missing file id' });
+      }
+      const { db } = dbClient;
+      const filesCollection = db.collection('files');
+      const file = await filesCollection.findOne({
+        _id: ObjectId(fileId),
+        userId: ObjectId(userId),
+      });
+      if (!file) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+      await filesCollection.updateOne(
+        { _id: ObjectId(fileId) },
+        { $set: { isPublic: false } },
+      );
+      const updatedFile = await filesCollection.findOne({ _id: ObjectId(fileId) });
+      const mappedFile = {
+        id: updatedFile._id.toString(),
+        userId: userId.toString(),
+        name: updatedFile.name,
+        type: updatedFile.type,
+        isPublic: updatedFile.isPublic,
+        parentId: updatedFile.parentId ? updatedFile.parentId.toString() : '0',
+      };
+      return res.status(200).json(mappedFile);
+    } catch (error) {
+      console.error('Error unpublishing file:', error);
+      return res.status(500).json({ error: 'Error unpublishing file' });
+    }
+  }
 }
 
 module.exports = FilesController;
