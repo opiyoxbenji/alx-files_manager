@@ -154,27 +154,17 @@ class FilesController {
       }
       const fileId = req.params.id;
       if (!fileId) {
-        return res.status(400).json({ error: 'Missing file id' });
+        return res.status(404).json({ error: 'Not found' });
       }
       const { db } = dbClient;
       const filesCollection = db.collection('files');
-      const updatedFile = await filesCollection.findOneAndUpdate(
-        { _id: ObjectId(fileId), userId: ObjectId(userId) },
-        { $set: { isPublic: true } },
-        { returnDocument: 'after' }
-      );
-      if (!updatedFile.value) {
+      const filesCol = filesCollection.findOne({ _id: ObjectId(fileId), userId: ObjectId(userId) });
+      const file = await filesCol(fileId);
+      if (!file || file.userId.toString() !== userId._id.toString()) {
         return res.status(404).json({ error: 'Not found' });
       }
-      const mappedFile = {
-        id: updatedFile.value._id.toString(),
-        userId: userId.toString(),
-        name: updatedFile.value.name,
-        type: updatedFile.value.type,
-        isPublic: updatedFile.value.isPublic,
-        parentId: updatedFile.value.parentId === '0'? '0' : updatedFile.value.parentId.toString(),
-      };
-      return res.status(200).json(mappedFile);
+      const updateFile = await FilesController.updateFilePublish(fileId, true);
+      return res.status(200).json(updateFile);
     } catch (error) {
       console.error('Error publishing file:', error);
       return res.status(500).json({ error: 'Error publishing file' });
@@ -182,7 +172,7 @@ class FilesController {
   }
 
   static async putUnpublish(req, res) {
-    try {
+  try {
       const token = req.headers['x-token'];
       const key = `auth_${token}`;
       const userId = await redisClient.get(key);
@@ -191,31 +181,36 @@ class FilesController {
       }
       const fileId = req.params.id;
       if (!fileId) {
-        return res.status(400).json({ error: 'Missing file id' });
-      }
-      const { db } = dbClient;
-      const filesCollection = db.collection('files');
-      const updatedFile = await filesCollection.findOneAndUpdate(
-        { _id: ObjectId(fileId) },
-        { $set: { isPublic: false } },
-        { returnDocument: 'after' }
-      );
-      if (!updatedFile.value) {
         return res.status(404).json({ error: 'Not found' });
       }
-      const mappedFile = {
-        id: updatedFile.value._id.toString(),
-        userId: userId.toString(),
-        name: updatedFile.value.name,
-        type: updatedFile.value.type,
-        isPublic: updatedFile.value.isPublic,
-        parentId: updatedFile.value.parentId === '0' ? '0' : updatedFile.value.parentId.toString(),
-      };
-      return res.status(200).json(mappedFile);
+      const { db } = dbClient;
+      const filesCollection = dbClient.client.db().collection('files');
+      const filesCol = filesCollection.findOne({ _id: ObjectId(fileId), userId: ObjectId(userId) });
+      const file = await filesCol(fileId);
+      if (!file || file.userId.toString() !== userId._id.toString()) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+      const updateFile = await FilesController.updateFilePublish(fileId, false);
+      return res.status(200).json(updateFile);
     } catch (error) {
-      console.error('Error unpublishing file:', error);
-      return res.status(500).json({ error: 'Error unpublishing file' });
+      console.error('Error publishing file:', error);
+      return res.status(500).json({ error: 'Error publishing file' });
     }
+  }
+
+  static async updateFilePublish(fileId, isPublic) {
+    const fileCollection = dbClient.client.db().collection('files');
+    const res = await filesCollection.findOneAndUpdate(
+      { _id: ObjectId(fileId) },
+      { $set: { isPublic } },
+      { returnDocument: 'after' },
+    );
+    const updateFile = res.value;
+    if (!updateFile) {
+      throw new Error('Failed to update file status');
+    }
+    const { _id, localPath, ...rest } = updateFile;
+    return { id: _id.toString(), ...rest };
   }
 }
 
