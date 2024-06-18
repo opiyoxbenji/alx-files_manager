@@ -127,7 +127,7 @@ class FilesController {
         files,
       });
     } catch (error) {
-      console.error ('Error fetching files:', error);
+      console.error('Error fetching files:', error);
       return res.status(500).json({ error: 'Error fetching files' });
     }
   }
