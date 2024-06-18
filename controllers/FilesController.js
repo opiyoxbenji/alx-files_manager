@@ -72,6 +72,7 @@ class FilesController {
       return res.status(500).json({ error: 'Error uploading file' });
     }
   }
+
   static async getShow(req, res) {
     try {
       const token = req.headers['x-token'];
@@ -83,6 +84,7 @@ class FilesController {
       const fileId = req.params.id;
       const { db } = dbClient;
       const filesCollection = db.collection('files');
+      // eslint-disable-next-line max-len
       const file = await filesCollection.findOne({ _id: ObjectId(fileId), userId: ObjectId(userId) });
       if (!file) {
         return res.status(404).json({ error: 'Not found' });
