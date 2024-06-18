@@ -185,7 +185,7 @@ class FilesController {
     }
   }
 
-  static async putUnPublish(req, res) {
+  static async putUnpublish(req, res) {
     try {
       const token = req.headers['x-token'];
       const key = `auth_${token}`;
