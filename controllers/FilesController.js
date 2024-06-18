@@ -145,22 +145,24 @@ class FilesController {
   }
 
   static async putPublish(req, res) {
+    const token = req.headers['x-token'];
+    const key = `auth_${token}`;
+    const userId = await redisClient.get(key);
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const fileId = req.params.id;
+    if (!fileId) {
+      return res.status(404).json({ error: 'Not found' });
+    }
     try {
-      const token = req.headers['x-token'];
-      const key = `auth_${token}`;
-      const userId = await redisClient.get(key);
-      if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-      const fileId = req.params.id;
-      if (!fileId) {
-        return res.status(404).json({ error: 'Not found' });
-      }
-      const { db } = dbClient;
-      const filesCollection = db.collection('files');
-      const filesCol = filesCollection.findOne({ _id: ObjectId(fileId), userId: ObjectId(userId) });
-      const file = await filesCol(fileId);
-      if (!file || file.userId.toString() !== userId._id.toString()) {
+      // const { db } = dbClient;
+      const filesCollection = dbClient.db.collection('files');
+      const file = await filesCollection.findOne({
+        _id: ObjectId(fileId),
+        userId: ObjectId(userId),
+      });
+      if (!file) {
         return res.status(404).json({ error: 'Not found' });
       }
       const updateFile = await FilesController.updateFilePublish(fileId, true);
@@ -172,22 +174,24 @@ class FilesController {
   }
 
   static async putUnpublish(req, res) {
-  try {
-      const token = req.headers['x-token'];
-      const key = `auth_${token}`;
-      const userId = await redisClient.get(key);
-      if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-      const fileId = req.params.id;
-      if (!fileId) {
-        return res.status(404).json({ error: 'Not found' });
-      }
-      const { db } = dbClient;
-      const filesCollection = dbClient.client.db().collection('files');
-      const filesCol = filesCollection.findOne({ _id: ObjectId(fileId), userId: ObjectId(userId) });
-      const file = await filesCol(fileId);
-      if (!file || file.userId.toString() !== userId._id.toString()) {
+    const token = req.headers['x-token'];
+    const key = `auth_${token}`;
+    const userId = await redisClient.get(key);
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const fileId = req.params.id;
+    if (!fileId) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    try {
+      // const { db } = dbClient;
+      const filesCollection = dbClient.db.collection('files');
+      const file = await filesCollection.findOne({
+        _id: ObjectId(fileId),
+        userId: ObjectId(userId),
+      });
+      if (!file) {
         return res.status(404).json({ error: 'Not found' });
       }
       const updateFile = await FilesController.updateFilePublish(fileId, false);
@@ -199,18 +203,23 @@ class FilesController {
   }
 
   static async updateFilePublish(fileId, isPublic) {
-    const fileCollection = dbClient.client.db().collection('files');
-    const res = await filesCollection.findOneAndUpdate(
-      { _id: ObjectId(fileId) },
-      { $set: { isPublic } },
-      { returnDocument: 'after' },
-    );
-    const updateFile = res.value;
-    if (!updateFile) {
+    try {
+      const filesCollection = dbClient.db.collection('files');
+      const result = await filesCollection.findOneAndUpdate(
+        { _id: ObjectId(fileId) },
+        { $set: { isPublic } },
+        { returnDocument: 'after' },
+      );
+      const updateFile = result.value;
+      if (!updateFile) {
+        throw new Error('Failed to update file status');
+      }
+      const { _id, ...rest } = updateFile;
+      return { id: _id.toString(), ...rest };
+    } catch (error) {
+      console.error('Error updating file:', error);
       throw new Error('Failed to update file status');
     }
-    const { _id, localPath, ...rest } = updateFile;
-    return { id: _id.toString(), ...rest };
   }
 }
 
