@@ -158,25 +158,21 @@ class FilesController {
       }
       const { db } = dbClient;
       const filesCollection = db.collection('files');
-      const file = await filesCollection.findOne({
-        _id: ObjectId(fileId),
-        userId: ObjectId(userId),
-      });
-      if (!file) {
+      const updatedFile = await filesCollection.findOneAndUpdate(
+        { _id: ObjectId(fileId), userId: ObjectId(userId) },
+        { $set: { isPublic: true } },
+        { returnDocument: 'after' }
+      );
+      if (!updatedFile.value) {
         return res.status(404).json({ error: 'Not found' });
       }
-      await filesCollection.updateOne(
-        { _id: ObjectId(fileId) },
-        { $set: { isPublic: true } },
-      );
-      const updatedFile = await filesCollection.findOne({ _id: ObjectId(fileId) });
       const mappedFile = {
-        id: updatedFile._id.toString(),
+        id: updatedFile.value._id.toString(),
         userId: userId.toString(),
-        name: updatedFile.name,
-        type: updatedFile.type,
-        isPublic: updatedFile.isPublic,
-        parentId: updatedFile.parentId ? updatedFile.parentId.toString() : '0',
+        name: updatedFile.value.name,
+        type: updatedFile.value.type,
+        isPublic: updatedFile.value.isPublic,
+        parentId: updatedFile.value.parentId === '0'? '0' : updatedFile.value.parentId.toString(),
       };
       return res.status(200).json(mappedFile);
     } catch (error) {
@@ -199,25 +195,21 @@ class FilesController {
       }
       const { db } = dbClient;
       const filesCollection = db.collection('files');
-      const file = await filesCollection.findOne({
-        _id: ObjectId(fileId),
-        userId: ObjectId(userId),
-      });
-      if (!file) {
-        return res.status(404).json({ error: 'Not found' });
-      }
-      await filesCollection.updateOne(
+      const updatedFile = await filesCollection.findOneAndUpdate(
         { _id: ObjectId(fileId) },
         { $set: { isPublic: false } },
+        { returnDocument: 'after' }
       );
-      const updatedFile = await filesCollection.findOne({ _id: ObjectId(fileId) });
+      if (!updatedFile.value) {
+        return res.status(404).json({ error: 'Not found' });
+      }
       const mappedFile = {
-        id: updatedFile._id.toString(),
+        id: updatedFile.value._id.toString(),
         userId: userId.toString(),
-        name: updatedFile.name,
-        type: updatedFile.type,
-        isPublic: updatedFile.isPublic,
-        parentId: updatedFile.parentId ? updatedFile.parentId.toString() : '0',
+        name: updatedFile.value.name,
+        type: updatedFile.value.type,
+        isPublic: updatedFile.value.isPublic,
+        parentId: updatedFile.value.parentId === '0' ? '0' : updatedFile.value.parentId.toString(),
       };
       return res.status(200).json(mappedFile);
     } catch (error) {
