@@ -145,36 +145,31 @@ class FilesController {
   }
 
   static async putPublish(req, res) {
+    const { id } = req.params;
+    const token = req.headers['x-token'];
     try {
-      const token = req.headers['x-token'];
       const key = `auth_${token}`;
       const userId = await redisClient.get(key);
       if (!userId) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
-      const fileId = req.params.id;
-      if (!fileId) {
-        return res.status(400).json({ error: 'Missing file id' });
-      }
-      const { db } = dbClient;
-      const filesCollection = db.collection('files');
-      const updatedFile = await filesCollection.findOneAndUpdate(
-        { _id: ObjectId(fileId), userId: ObjectId(userId) },
+      const filesCollection = dbClient.db.collection('files');
+      const file = await filesCollection.findOneAndUpdate(
+        { _id: ObjectId(id), userId: ObjectId(userId) },
         { $set: { isPublic: true } },
         { returnDocument: 'after' },
       );
-      if (!updatedFile.value) {
+      if (!file.value) {
         return res.status(404).json({ error: 'Not found' });
       }
-      const mappedFile = {
-        id: updatedFile.value._id.toString(),
+      return res.status(200).json({
+        id: file.value._id.toString(),
         userId: userId.toString(),
-        name: updatedFile.value.name,
-        type: updatedFile.value.type,
-        isPublic: updatedFile.value.isPublic,
-        parentId: updatedFile.value.parentId === '0' ? '0' : updatedFile.value.parentId.toString(),
-      };
-      return res.status(200).json(mappedFile);
+        name: file.value.name,
+        type: file.value.type,
+        isPublic: file.value.isPublic,
+        parentId: file.value.parentId === '0' ? '0' : file.value.parentId.toString(),
+      });
     } catch (error) {
       console.error('Error publishing file:', error);
       return res.status(500).json({ error: 'Error publishing file' });
@@ -182,39 +177,34 @@ class FilesController {
   }
 
   static async putUnpublish(req, res) {
+    const { id } = req.params;
+    const token = req.headers['x-token'];
     try {
-      const token = req.headers['x-token'];
       const key = `auth_${token}`;
       const userId = await redisClient.get(key);
       if (!userId) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
-      const fileId = req.params.id;
-      if (!fileId) {
-        return res.status(400).json({ error: 'Missing file id' });
-      }
-      const { db } = dbClient;
-      const filesCollection = db.collection('files');
-      const updatedFile = await filesCollection.findOneAndUpdate(
-        { _id: ObjectId(fileId) },
+      const filesCollection = dbClient.db.collection('files');
+      const file = await filesCollection.findOneAndUpdate(
+        { _id: ObjectId(id), userId: ObjectId(userId) },
         { $set: { isPublic: false } },
         { returnDocument: 'after' },
       );
-      if (!updatedFile.value) {
+      if (!file.value) {
         return res.status(404).json({ error: 'Not found' });
       }
-      const mappedFile = {
-        id: updatedFile.value._id.toString(),
+      return res.status(200).json({
+        id: file.value._id.toString(),
         userId: userId.toString(),
-        name: updatedFile.value.name,
-        type: updatedFile.value.type,
-        isPublic: updatedFile.value.isPublic,
-        parentId: updatedFile.value.parentId === '0' ? '0' : updatedFile.value.parentId.toString(),
-      };
-      return res.status(200).json(mappedFile);
+        name: file.value.name,
+        type: file.value.type,
+        isPublic: file.value.isPublic,
+        parentId: file.value.parentId === '0' ? '0' : file.value.parentId.toString(),
+      });
     } catch (error) {
-      console.error('Error unpublishing file:', error);
-      return res.status(500).json({ error: 'Error unpublishing file' });
+      console.error('Error publishing file:', error);
+      return res.status(500).json({ error: 'Error publishing file' });
     }
   }
 }
