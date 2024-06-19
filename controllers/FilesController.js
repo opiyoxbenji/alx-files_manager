@@ -269,15 +269,20 @@ class FilesController {
         return res.status(400).json({ error: "A folder doesn't have content" });
       }
       const filePath = file.localPath;
-      const pathExists = await FilesController.pathExists(filePath);
-      if (!pathExists) {
+      try {
+        await fs.promises.access(filePath, fs.constants.R_OK);
+      } catch (error) {
         return res.status(404).json({ error: 'Not found' });
       }
       const mimeType = mime.lookup(file.name);
       res.setHeader('Content-Type', mimeType);
-      const readFileAsync = promisify(fs.readFile);
-      const fileContent = await readFileAsync(filePath, 'utf-8');
+      try {
+        const fileContent = await fs.promises.readFile(filePath, 'utf-8');
       return res.status(200).send(fileContent);
+      } catch (error) {
+        console.error('Error in get file:', error);
+      return res.status(500).json({ error: 'Error fetching file' });
+      }
     } catch (error) {
       console.error('Error in get file:', error);
       return res.status(500).json({ error: 'Error fetching file' });
