@@ -253,8 +253,10 @@ class FilesController {
       if (!fileId) {
         return res.status(404).json({ error: 'Not found' });
       }
-      const { db } = dbClient;
-      const filesCollection = db.collection('files');
+      if (!fileId) {
+        return res.status(400).json({ error: 'Missing file ID' });
+      }
+      const filesCollection = dbClient.db.collection('files');
       const file = await filesCollection.findOne({
         _id: ObjectId(fileId),
       });
@@ -266,17 +268,19 @@ class FilesController {
         return res.status(404).json({ error: 'Not found' });
       }
       if (file.type === 'folder') {
-        return res.status(400).json({ error: "A folder doesn't have content" });
+        return res
+          .status(400)
+          .json({ error: "A folder doesn't have content" });
       }
       const filePath = file.localPath;
       const pathExists = await FilesController.pathExists(filePath);
       if (!pathExists) {
         return res.status(404).json({ error: 'Not found' });
       }
-      const mimeType = mime.lookup(file.name);
+      const mimeType = mime.lookup(file.name) || 'application/octet-stream';
       res.setHeader('Content-Type', mimeType);
       const readFileAsync = promisify(fs.readFile);
-      const fileContent = await readFileAsync(filePath, 'utf-8');
+      const fileContent = await readFileAsync(filePath);
       return res.status(200).send(fileContent);
     } catch (error) {
       console.error('Error in get file:', error);
