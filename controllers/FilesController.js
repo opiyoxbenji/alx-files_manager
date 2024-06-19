@@ -145,9 +145,9 @@ class FilesController {
   }
 
   static async putPublish(req, res) {
-    const { id } = req.params;
-    const token = req.headers['x-token'];
     try {
+      const { id } = req.params;
+      const token = req.headers['x-token'];
       const key = `auth_${token}`;
       const userId = await redisClient.get(key);
       if (!userId) {
@@ -185,28 +185,39 @@ class FilesController {
   }
 
   static async putUnpublish(req, res) {
-    const token = req.headers['x-token'];
-    const key = `auth_${token}`;
-    const userId = await redisClient.get(key);
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    const fileId = req.params.id;
-    if (!fileId) {
-      return res.status(404).json({ error: 'Not found' });
-    }
     try {
-      // const { db } = dbClient;
-      const filesCollection = dbClient.db.collection('files');
+      const { id } = req.params;
+      const token = req.headers['x-token'];
+      const key = `auth_${token}`;
+      const userId = await redisClient.get(key);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const { db } = dbClient;
+      const filesCollection = db.collection('files');
       const file = await filesCollection.findOne({
-        _id: ObjectId(fileId),
+        _id: ObjectId(id),
         userId: ObjectId(userId),
       });
       if (!file) {
         return res.status(404).json({ error: 'Not found' });
       }
-      const updateFile = await FilesController.updateFilePublish(fileId, false);
-      return res.status(200).json(updateFile);
+      if (!file.isPublic) {
+        return res.status(400).json({ error: 'File is already unpublished' });
+      }
+      const updatedFile = await filesCollection.findOneAndUpdate(
+        { _id: ObjectId(id), userId: ObjectId(userId) },
+        { $set: { isPublic: false } },
+        { returnDocument: 'after' },
+      );
+      return res.status(200).json({
+        id: updatedFile.value._id.toString(),
+        userId: userId.toString(),
+        name: updatedFile.value.name,
+        type: updatedFile.value.type,
+        isPublic: updatedFile.value.isPublic,
+        parentId: updatedFile.value.parentId === '0' ? '0' : updatedFile.value.parentId.toString(),
+      });
     } catch (error) {
       console.error('Error publishing file:', error);
       return res.status(500).json({ error: 'Error publishing file' });
