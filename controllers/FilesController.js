@@ -165,8 +165,15 @@ class FilesController {
       if (!file) {
         return res.status(404).json({ error: 'Not found' });
       }
-      const updateFile = await FilesController.updateFilePublish(fileId, true);
-      return res.status(200).json(updateFile);
+      const result = await filesCollection.findOneAndUpdate(
+        { _id: ObjectId(fileId), userId: ObjectId(userId) },
+        { $set: { isPublic: true } },
+        { returnOriginal: false },
+      );
+      if (!result.value) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+      return res.status(200).json(result.value);
     } catch (error) {
       console.error('Error publishing file:', error);
       return res.status(500).json({ error: 'Error publishing file' });
@@ -194,11 +201,18 @@ class FilesController {
       if (!file) {
         return res.status(404).json({ error: 'Not found' });
       }
-      const updateFile = await FilesController.updateFilePublish(fileId, false);
-      return res.status(200).json(updateFile);
+      const result = await filesCollection.findOneAndUpdate(
+        { _id: ObjectId(fileId), userId: ObjectId(userId) },
+        { $set: { isPublic: false } },
+        { returnOriginal: false },
+      );
+      if (!result.value) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+      return res.status(200).json(result.value);
     } catch (error) {
-      console.error('Error publishing file:', error);
-      return res.status(500).json({ error: 'Error publishing file' });
+      console.error('Error unpublishing file:', error);
+      return res.status(500).json({ error: 'Error unpublishing file' });
     }
   }
 
