@@ -239,45 +239,32 @@ class FilesController {
   }
 
   static async getFile(req, res) {
+    const fileId = req.params.id;
+    const token = req.headers['x-token'] || null;
     try {
-      const authToken = req.header('X-Token') || null;
-      if (!authToken) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-      const key = `auth_${authToken}`;
-      const userId = await redisClient.get(key);
-      if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-      const fileId = req.params.id;
-      if (!fileId) {
-        return res.status(404).json({ error: 'Not found' });
-      }
+      const key = `auth_${token}`;
+      const userId = token ? await redisClient.get(key) : null;
       const { db } = dbClient;
       const filesCollection = db.collection('files');
-      const file = await filesCollection.findOne({
-        _id: ObjectId(fileId),
-      });
+      const file = await filesCollection.findOne({ _id: ObjectId(fileId) });
       if (!file) {
-        return res.status(404).json({ error: 'Not found' });
-      }
-      const isOwnerOrPublic = file.isPublic || file.userId.toString() === userId;
-      if (!isOwnerOrPublic) {
         return res.status(404).json({ error: 'Not found' });
       }
       if (file.type === 'folder') {
         return res.status(400).json({ error: "A folder doesn't have content" });
       }
-      const filePath = file.localPath;
-      const pathExists = await FilesController.pathExists(filePath);
-      if (!pathExists) {
+      if (!file.isPublic) {
+        if (!token || !userId || userId !== file.userId.toString()) {
+          return res.status(404).json({ error: 'Not found' });
+	}
+      }
+      if (!fs.existsSync(file.localPath)) {
         return res.status(404).json({ error: 'Not found' });
       }
-      const mimeType = mime.lookup(file.name);
+      const fileData = fs.readFileSync(file.localPath);
+      const mimeType = mime.lookup(file.name) || 'application/octet-stream';;
       res.setHeader('Content-Type', mimeType);
-      const readFileAsync = promisify(fs.readFile);
-      const fileContent = await readFileAsync(filePath, 'utf-8');
-      return res.status(200).send(fileContent);
+      return res.status(200).send(fileData);
     } catch (error) {
       console.error('Error in get file:', error);
       return res.status(500).json({ error: 'Error fetching file' });
