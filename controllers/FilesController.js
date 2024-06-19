@@ -244,9 +244,6 @@ class FilesController {
     try {
       const key = `auth_${token}`;
       const userId = token ? await redisClient.get(key) : null;
-      if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
       const { db } = dbClient;
       const filesCollection = db.collection('files');
       const file = await filesCollection.findOne({ _id: ObjectId(fileId) });
