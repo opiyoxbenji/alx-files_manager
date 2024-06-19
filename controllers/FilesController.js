@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import mime from 'mime-types';
+import { promisify } from 'util';
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
 
@@ -239,8 +240,11 @@ class FilesController {
 
   static async getFile(req, res) {
     try {
-      const token = req.headers['x-token'];
-      const key = `auth_${token}`;
+      const authToken = req.header('X-Token') || null;
+      if (!authToken) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const key = `auth_${authToken}`;
       const userId = await redisClient.get(key);
       if (!userId) {
         return res.status(401).json({ error: 'Unauthorized' });
@@ -257,26 +261,33 @@ class FilesController {
       if (!file) {
         return res.status(404).json({ error: 'Not found' });
       }
-      const userIsOwner = file.userId.toString() === userId.toString();
-      const fileIsPublic = file.isPublic === true;
-      if (!fileIsPublic && !userIsOwner) {
+      const isOwnerOrPublic = file.isPublic || file.userId.toString() === userId;
+      if (!isOwnerOrPublic) {
         return res.status(404).json({ error: 'Not found' });
       }
       if (file.type === 'folder') {
-        return res.status(400).json({ error: 'A folder doesn\'t have content' });
+        return res.status(400).json({ error: "A folder doesn't have content" });
       }
-      const { localPath } = file.localPath;
-      if (!fs.existsSync(localPath)) {
+      const filePath = file.localPath;
+      const pathExists = await FilesController.pathExists(filePath);
+      if (!pathExists) {
         return res.status(404).json({ error: 'Not found' });
       }
       const mimeType = mime.lookup(file.name);
       res.setHeader('Content-Type', mimeType);
-      fs.createReadStream(localPath).pipe(res);
-      return res;
+      const readFileAsync = promisify(fs.readFile);
+      const fileContent = await readFileAsync(filePath, 'utf-8');
+      return res.status(200).send(fileContent);
     } catch (error) {
-      console.error('Error fetching file data:', error);
-      return res.status(500).json({ error: 'Error fetching file data' });
+      console.error('Error in get file:', error);
+      return res.status(500).json({ error: 'Error fetching file' });
     }
+  }
+
+  static async pathExists(filePath) {
+    return promisify(fs.access)(filePath, fs.constants.F_OK)
+      .then(() => true)
+      .catch(() => false);
   }
 }
 
