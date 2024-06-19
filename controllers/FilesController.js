@@ -240,9 +240,6 @@ class FilesController {
 
   static async getFile(req, res) {
     const fileId = req.params.id;
-    if (!fileId) {
-      return res.status(404).json({ error: 'Not found' });
-    }
     const token = req.headers['x-token'] || null;
     try {
       const key = `auth_${token}`;
